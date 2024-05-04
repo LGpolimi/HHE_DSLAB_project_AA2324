@@ -58,4 +58,11 @@ print(df_air_quality['idSensore'].value_counts())
 ## Print the number of rows in the air quality dataframe for each unique value in 'idSensore' column grouped by the year
 print(df_air_quality.groupby(df_air_quality['Data'].str[6:10])['idSensore'].value_counts())
 
+##Print the number of rows in the air quality dataframe for each year
+print(df_air_quality['Data'].str[6:10].value_counts())
+
+
+
+
+
 
