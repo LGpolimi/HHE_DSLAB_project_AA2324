@@ -6,7 +6,7 @@
 /Scripts/
 /pyvenv.cfg
 /Datasources/
-
+/Air_quality_data/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
