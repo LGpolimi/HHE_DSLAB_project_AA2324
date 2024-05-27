@@ -1,17 +1,12 @@
 import pandas as pd
+import numpy as np
+
 df_stations = pd.read_csv('Air_quality_data/Stazioni_qualit__dell_aria_20240430.csv')
 df_air_quality1 = pd.read_csv('Air_quality_data/Dati_sensori_aria_2010-2017_20240430.csv', low_memory=False)
 df_air_quality2 = pd.read_csv('Air_quality_data/Dati_sensori_aria_dal_2018_20240430.csv', low_memory=False)
+
 # Add the two dataframes together by row
 df_air_quality = pd.concat([df_air_quality1, df_air_quality2], axis=0)
-## Print the first few rows of the dataframe
-print(df_air_quality.head())
-
-print(df_stations.columns)
-## print df of columns 'provincia' and 'Location'
-print(df_stations[['Provincia', 'Comune', 'Location']])
-## print unique values of 'Comune' column
-print(df_stations['Comune'].unique())
 
 milan_municipalities = [
     'Abbiategrasso', 'Albairate', 'Arconate', 'Arese', 'Arluno', 'Assago',
@@ -32,37 +27,47 @@ milan_municipalities = [
     'Zibido San Giacomo'
 ]
 
-## Print the number of municipalities in Milan
-print(len(milan_municipalities))
-
-## Make a list of municipalities in Milan that are not in the dataset
-not_in_dataset = [municipality for municipality in milan_municipalities if municipality not in df_stations['Comune'].unique()]
-print(not_in_dataset)
-
 ## Drop rows with municipalities not in the list of milan_municipalities
 df_milano_stations = df_stations[df_stations['Comune'].isin(milan_municipalities)]
 print(df_milano_stations['Comune'].unique())
-## Print the number of municipalities in province of Milan that have air quality data
-print(len(df_milano_stations['Comune'].unique()))
 
-## Count the number of rows for each unique value in 'NomeTipoSensore' column
-print(df_milano_stations['NomeTipoSensore'].value_counts())
+## Remove column 'idOperatore' from the air quality dataframe
+df_air_quality = df_air_quality.drop('idOperatore', axis=1)
+df_air_quality.head()
 
-## Get the list IdSensore for each unique value in 'NomeTipoSensore' column
-print(df_milano_stations.groupby('NomeTipoSensore')['IdSensore'].unique())
+## Rename the column 'idSensore' to 'IdSensore' in the air quality dataframe
+df_air_quality = df_air_quality.rename(columns={'idSensore': 'IdSensore'})
+df_air_quality.head()
 
-## Print the number of rows in the air quality dataframe for each unique value in 'IdSensore' column
-print(df_air_quality['idSensore'].value_counts())
+## Add 'UnitaMisura' column to the air quality dataframe based on the 'IdSensore' column
+df_air_quality = df_air_quality.merge(df_milano_stations[['IdSensore', 'UnitaMisura']], on='IdSensore')
+df_air_quality.head()
 
+## Append the column 'NomeTipoSensore' to the air quality dataframe based on the 'IdSensore' column
+df_air_quality = df_air_quality.merge(df_milano_stations[['IdSensore', 'NomeTipoSensore']], on='IdSensore')
+df_air_quality.head()
 
-## Print the number of rows in the air quality dataframe for each unique value in 'idSensore' column grouped by the year
-print(df_air_quality.groupby(df_air_quality['Data'].str[6:10])['idSensore'].value_counts())
+## Remove rows where 'NomeTipoSensore' has the value 'Cadmio', 'Benzo(a)pirene', 'Nikel', 'Piombo', 'Arsenico', 'Ammoniaca', 'BlackCarbon', 'Particelle sospese PM2.5', 'Benzene'
+df_air_quality = df_air_quality[~df_air_quality['NomeTipoSensore'].isin(['Cadmio', 'Benzo(a)pirene', 'Nikel', 'Piombo', 'Arsenico', 'Ammoniaca', 'BlackCarbon', 'Particelle sospese PM2.5', 'Benzene'])]
+df_air_quality.head()
 
-##Print the number of rows in the air quality dataframe for each year
-print(df_air_quality['Data'].str[6:10].value_counts())
+## Convert the column 'Date' to datetime
+df_air_quality['Data'] = pd.to_datetime(df_air_quality['Data'], dayfirst=True)
+df_air_quality.head()
 
+## Add columns 'Year', 'Month', 'Day', 'Hour' to the air quality dataframe based on the 'Data' column
+df_air_quality['Year'] = df_air_quality['Data'].dt.year
+df_air_quality['Month'] = df_air_quality['Data'].dt.month
+df_air_quality['Day'] = df_air_quality['Data'].dt.day
+df_air_quality['Hour'] = df_air_quality['Data'].dt.hour
+df_air_quality.head()
 
+## Append the column 'Comune' to the air quality dataframe based on the 'IdSensore' column
+df_air_quality = df_air_quality.merge(df_milano_stations[['IdSensore', 'Comune']], on='IdSensore')
+df_air_quality.head()
 
+## Put NaN in  rows with values less than 0 in the column 'Valore' in the air quality dataframe
+df_air_quality.loc[df_air_quality['Valore'] < 0, 'Valore'] = np.nan
 
-
-
+## Save the air quality dataframe to a csv file
+df_air_quality.to_csv('df_air_quality_dateTime.csv', index=False)
